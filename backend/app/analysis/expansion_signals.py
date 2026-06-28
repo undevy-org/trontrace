@@ -35,14 +35,14 @@ def _recurrence(months_paid: int) -> float:
     return min(1.0, months_paid / settings.recurrence_target_months)
 
 
-def _amount_stability(amounts: list[int]) -> float:
-    """1 - coefficient of variation, clamped to [0,1]. Stable amounts -> near 1."""
-    if len(amounts) < 2:
+def amount_consistency(values: list[int]) -> float:
+    """1 - coefficient of variation, clamped to [0,1]. Identical values -> ~1; needs >=2 points."""
+    if len(values) < 2:
         return 0.0
-    mean = statistics.mean(amounts)
+    mean = statistics.mean(values)
     if mean == 0:
         return 0.0
-    cv = statistics.pstdev(amounts) / mean
+    cv = statistics.pstdev(values) / mean
     return max(0.0, 1.0 - cv)
 
 
@@ -59,7 +59,7 @@ def recipient_score(f: RecipientFeatures) -> float:
     corec = min(1.0, f.n_payers / max(1, settings.corecipient_min_k))
     rec = _recurrence(f.months_paid)
     align = max(0.0, min(1.0, f.aligned_fraction))
-    stab = _amount_stability(f.amounts)
+    stab = amount_consistency(f.amounts)
     fanin = 0.0 if f.distinct_senders > settings.recipient_fanin_cap else 1.0
     score = (settings.w_rec_corecipient * corec
              + settings.w_rec_recurrence * rec

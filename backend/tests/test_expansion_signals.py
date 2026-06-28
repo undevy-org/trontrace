@@ -95,3 +95,19 @@ def test_multi_month_recipient_not_clamped():
         f"Multi-month recipient (months_paid={settings.recurrence_min_months}) scored "
         f"{score:.4f} < med threshold {settings.expand_tier_med} — gate is over-restrictive"
     )
+
+
+def test_amount_consistency_identical_and_variable():
+    from app.analysis.expansion_signals import amount_consistency
+    assert amount_consistency([6000, 6000, 6000]) >= 0.99   # identical -> ~1
+    assert amount_consistency([1000, 11000, 1000, 11000]) < 0.5   # high variance -> low
+    assert amount_consistency([6000]) == 0.0                # <2 points -> 0
+
+
+def test_consistent_amount_outranks_variable():
+    from app.analysis.expansion_signals import amount_consistency
+    base = dict(n_payers=2, months_paid=12, aligned_fraction=1.0, distinct_senders=3)
+    steady = RecipientFeatures(amounts=[6000] * 12, **base)
+    variable = RecipientFeatures(amounts=[1000, 11000] * 6, **base)   # same mean, high variance
+    assert recipient_score(steady) > recipient_score(variable)
+    assert tier(recipient_score(steady)) == "high"

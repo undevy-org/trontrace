@@ -56,11 +56,11 @@ class Settings(BaseSettings):
     recurrence_target_months: int = 6       # months_paid at/above this -> full recurrence credit
     recurrence_min_months: int = 2          # below this, recipient is not "recurring" (hard gate)
     # recipient score weights (sum 1.0)
-    w_rec_corecipient: float = 0.35
-    w_rec_recurrence: float = 0.25
-    w_rec_paycycle: float = 0.20
-    w_rec_stability: float = 0.10
-    w_rec_fanin: float = 0.10
+    w_rec_corecipient: float = 0.25
+    w_rec_recurrence: float = 0.20
+    w_rec_paycycle: float = 0.10
+    w_rec_stability: float = 0.40   # multiplies amount_consistency (dominant)
+    w_rec_fanin: float = 0.05
 
     # --- Payer scoring (v1.1 expansion, pure) ---
     # payer score weights (sum 1.0)
