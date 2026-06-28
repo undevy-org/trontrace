@@ -41,6 +41,10 @@ export interface WalletDetail {
   top_senders: { address: string; total: string }[];
 }
 
+export interface Cohort {
+  recipients: { address: string; tier: string; confidence: number; months_active: number; total: string }[];
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}/api${path}`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -60,5 +64,6 @@ export const api = {
     get<Monthly>(`/monthly?from_=${from ?? ""}&to=${to ?? ""}`),
   graph: (month?: string) => get<GraphData>(`/graph?month=${month ?? ""}`),
   wallet: (address: string) => get<WalletDetail>(`/wallet/${address}`),
+  cohort: () => get<Cohort>("/cohort"),
   csvUrl: () => `${BASE}/api/export/csv`,
 };

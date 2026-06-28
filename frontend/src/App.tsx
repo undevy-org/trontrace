@@ -3,6 +3,7 @@ import { Start } from "./pages/Start";
 import { Overview } from "./pages/Overview";
 import { MonthlyTable } from "./pages/MonthlyTable";
 import { Graph } from "./pages/Graph";
+import { Cohort } from "./pages/Cohort";
 
 export function App() {
   return (
@@ -23,6 +24,7 @@ export function App() {
         <Link to="/overview">Overview</Link>
         <Link to="/monthly">Monthly Table</Link>
         <Link to="/graph">Graph</Link>
+        <Link to="/cohort">Cohort</Link>
       </nav>
       <main style={{ padding: 16 }}>
         <Routes>
@@ -30,6 +32,7 @@ export function App() {
           <Route path="/overview" element={<Overview />} />
           <Route path="/monthly" element={<MonthlyTable />} />
           <Route path="/graph" element={<Graph />} />
+          <Route path="/cohort" element={<Cohort />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
