@@ -73,3 +73,15 @@ def test_entity_nodes_roundtrip_ordered_by_confidence(temp_db):
     recips = store.read_entity_nodes("recipient")
     assert [r["address"] for r in recips] == ["R1", "R2"]   # confidence desc
     assert store.read_entity_nodes("payer")[0]["address"] == "W3"
+
+
+def test_cohort_timelines_groups_by_address(temp_db):
+    from app.analysis.monthly import MonthlyCell
+    store.write_monthly_stats([
+        MonthlyCell("R1", "2025-01", 3_000000, 1),
+        MonthlyCell("R1", "2025-02", 3_000000, 1),
+        MonthlyCell("R2", "2025-01", 5_000000, 1),
+    ])
+    tl = store.cohort_timelines()
+    assert tl["R1"] == [("2025-01", 3_000000), ("2025-02", 3_000000)]
+    assert tl["R2"] == [("2025-01", 5_000000)]

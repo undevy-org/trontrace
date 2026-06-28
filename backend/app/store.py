@@ -385,3 +385,19 @@ def read_entity_nodes(kind: str) -> list[dict]:
             (kind,),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+# --- cohort timelines -------------------------------------------------------
+
+
+def cohort_timelines() -> dict[str, list[tuple[str, int]]]:
+    """address -> sorted [(year_month, total_raw)] from monthly_stats."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT counterparty_address, year_month, total_raw FROM monthly_stats "
+            "ORDER BY counterparty_address, year_month"
+        ).fetchall()
+    out: dict[str, list[tuple[str, int]]] = {}
+    for addr, ym, raw in rows:
+        out.setdefault(addr, []).append((ym, raw))
+    return out
