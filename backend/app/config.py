@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     fanout_cap: int = 2000                  # distinct-recipient ceiling for non-exchange (sender-side)
     funding_fetch_cap: int = 1000           # max inbound txs fetched per candidate
     recipient_fanin_cap: int = 50           # distinct-sender ceiling for a real counterparty (recipient-side gate, v1.1)
+    paycycle_tolerance_days: int = 2         # ±days around a pay-date peak
 
     # --- Clustering ---
     # recipient-side exchange gate (v1.1, opt-in): fetch each counterparty's inbound and flag
