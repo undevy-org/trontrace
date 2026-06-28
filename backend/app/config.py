@@ -49,6 +49,17 @@ class Settings(BaseSettings):
     weight_funding: float = 0.20            # positive-only bonus (absence never penalizes)
     employer_window_days: int = 180         # recent window for primary-payer selection
 
+    # --- Recipient scoring (v1.1 expansion, pure) ---
+    expand_tier_high: float = 0.70
+    expand_tier_med: float = 0.45
+    corecipient_min_k: int = 2              # min known recipients a payer must co-pay (K)
+    # recipient score weights (sum 1.0)
+    w_rec_corecipient: float = 0.35
+    w_rec_recurrence: float = 0.25
+    w_rec_paycycle: float = 0.20
+    w_rec_stability: float = 0.10
+    w_rec_fanin: float = 0.10
+
     # --- Server / storage ---
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
