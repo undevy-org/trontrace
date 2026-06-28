@@ -6,6 +6,19 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- **Entity expansion & recurring-recipient discovery** (`app/expansion.py`,
+  `app/analysis/expansion_signals.py`): from a single anchor, an iterative bipartite BFS grows
+  the payer entity beyond the wallets that paid the anchor — discovering previously-unknown
+  entity wallets — and enumerates the full cohort of recurring recipients, confidence-ranked
+  (High/Med/Low tiers). Signals: co-recipient overlap, pay-cycle fingerprint, tenure-based
+  recurrence, amount stability, fan-in. New `entity_nodes` table; endpoints `/api/expand`,
+  `/api/cohort`, `/api/entity-wallets`; a Cohort frontend screen. Spec/plan under
+  `docs/superpowers/`.
+  - Calibrated on a real wallet: the recurrence signal was corrected to reward absolute tenure
+    (`recurrence_target_months`) with a minimum-months hard gate (`recurrence_min_months`) — a
+    single payment is no longer treated as "recurring", which had flooded the cohort with
+    one-off recipients.
+
 - **Recipient-side fan-in gate** (`is_exchange_recipient`, opt-in via `recipient_gate`): a
   counterparty fed by many distinct senders (`recipient_fanin_cap`, default 50) is flagged as
   exchange/processor and dropped from the counterparty list. Motivated by real-data analysis —
