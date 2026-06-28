@@ -6,6 +6,13 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- **Consistent-amount recipient ranking** (`app/analysis/consistency.py`): amount consistency is
+  now the dominant recipient signal (re-weighted `recipient_score`), and a `/consistent` view +
+  `GET /api/consistent` rank fixed-amount recurring recipients (address × amount/month × months ×
+  consistency) with configurable band / consistency / min-months and CSV export. Flags likely
+  **wallet-change pairs** (same recurring amount in adjacent, non-overlapping months) for manual
+  review — no auto-merging. Validated on a real wallet: collapses a heuristic cohort of ~217 to
+  ~25 fixed-amount recipients (the anchor itself self-validates at its known amount).
 - **Entity expansion & recurring-recipient discovery** (`app/expansion.py`,
   `app/analysis/expansion_signals.py`): from a single anchor, an iterative bipartite BFS grows
   the payer entity beyond the wallets that paid the anchor — discovering previously-unknown
