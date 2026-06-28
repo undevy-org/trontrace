@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     w_rec_stability: float = 0.10
     w_rec_fanin: float = 0.10
 
+    # --- Payer scoring (v1.1 expansion, pure) ---
+    # payer score weights (sum 1.0)
+    w_pay_overlap: float = 0.50
+    w_pay_paycycle: float = 0.25
+    w_pay_corroboration: float = 0.25
+
     # --- Server / storage ---
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000

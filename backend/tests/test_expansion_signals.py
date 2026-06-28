@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from app.analysis.expansion_signals import (
     pay_cycle_fingerprint, aligns_with_cycle,
     RecipientFeatures, recipient_score, tier,
+    PayerFeatures, payer_score,
 )
 
 
@@ -34,3 +35,18 @@ def test_recipient_score_low_for_highfanin_oneoff():
                           aligned_fraction=0.0, amounts=[2_000_000], distinct_senders=400)
     assert recipient_score(f) < 0.45
     assert tier(recipient_score(f)) == "low"
+
+
+def test_payer_score_high_when_overlaps_cohort_on_cycle():
+    f = PayerFeatures(overlap_with_cohort=0.9, n_known_recipients_paid=3,
+                      aligned_fraction=1.0, is_exchange=False)
+    assert payer_score(f) >= 0.7
+
+
+def test_payer_score_zero_below_corroboration_or_exchange():
+    below_k = PayerFeatures(overlap_with_cohort=1.0, n_known_recipients_paid=1,
+                            aligned_fraction=1.0, is_exchange=False)
+    exch = PayerFeatures(overlap_with_cohort=1.0, n_known_recipients_paid=5,
+                         aligned_fraction=1.0, is_exchange=True)
+    assert payer_score(below_k) == 0.0   # K defaults to 2
+    assert payer_score(exch) == 0.0

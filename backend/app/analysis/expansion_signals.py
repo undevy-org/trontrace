@@ -77,3 +77,22 @@ def tier(conf: float) -> str:
     if conf >= settings.expand_tier_med:
         return "med"
     return "low"
+
+
+@dataclass
+class PayerFeatures:
+    overlap_with_cohort: float
+    n_known_recipients_paid: int
+    aligned_fraction: float
+    is_exchange: bool = False
+
+
+def payer_score(f: PayerFeatures) -> float:
+    """Hard gate: not an exchange, and co-pays >= K known recipients. Else 0."""
+    if f.is_exchange or f.n_known_recipients_paid < settings.corecipient_min_k:
+        return 0.0
+    corrob = min(1.0, f.n_known_recipients_paid / max(1, settings.corecipient_min_k * 2))
+    score = (settings.w_pay_overlap * max(0.0, min(1.0, f.overlap_with_cohort))
+             + settings.w_pay_paycycle * max(0.0, min(1.0, f.aligned_fraction))
+             + settings.w_pay_corroboration * corrob)
+    return min(1.0, score)
