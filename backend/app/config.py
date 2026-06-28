@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     w_pay_paycycle: float = 0.25
     w_pay_corroboration: float = 0.25
 
+    # --- Expansion BFS caps ---
+    expand_max_rounds: int = 6
+    expand_max_payers: int = 200
+    expand_max_recipients: int = 5000
+    expand_max_total_fetches: int = 4000
+
     # --- Server / storage ---
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
