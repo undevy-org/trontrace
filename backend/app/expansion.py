@@ -7,6 +7,8 @@ Loops until no High/Med node is added (loop-until-dry) or caps are hit.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from . import store
 from .analysis import expansion_signals as sig
 from .analysis.classify import is_exchange_recipient
@@ -25,8 +27,11 @@ async def run_expansion(
     payer_frontier = set(payers)
     recipient_frontier: set[str] = set()
     rounds = 0
+    fetches = 0  # hard budget: counts every TronGrid fetch across all steps
 
     while (payer_frontier or recipient_frontier) and rounds < settings.expand_max_rounds:
+        if fetches >= settings.expand_max_total_fetches:
+            break
         rounds += 1
 
         # --- payee step: payers -> candidate recipients ---
@@ -34,6 +39,7 @@ async def run_expansion(
         for w in list(payer_frontier):
             res = await client.fetch_transfers(w, direction="out",
                                                max_records=settings.candidate_tx_cap)
+            fetches += 1
             store.insert_transactions(res.records)
         payer_frontier.clear()
 
@@ -42,8 +48,11 @@ async def run_expansion(
         # Fetch each candidate's inbound to compute its fan-in (distinct_senders); this both
         # feeds the exchange gate and is reused as the recipient's inbound for the payer step.
         for cand in candidates:
+            if fetches >= settings.expand_max_total_fetches:
+                break
             res = await client.fetch_transfers(cand, direction="in",
                                                max_records=settings.recipient_inbound_cap)
+            fetches += 1
             store.insert_transactions(res.records)
         for cand in candidates:
             feats, _ = _recipient_features(cand, payers, fingerprint, client_cache=None)
@@ -56,7 +65,8 @@ async def run_expansion(
             # Persist every genuine (non-exchange) recipient at its actual tier; nothing is
             # hard-dropped from the ranked output. Only high/med expand the frontier.
             _persist_recipient(cand, conf, t, feats)
-            if t in ("high", "med"):
+            # Budget: stop growing the cohort/frontier once the recipient cap is reached.
+            if t in ("high", "med") and len(cohort) < settings.expand_max_recipients:
                 cohort.add(cand)
                 new_recipients.add(cand)
         recipient_frontier = new_recipients
@@ -135,11 +145,7 @@ def _payer_features(addr, cohort, fingerprint):
 
 
 def _inbound_rows(addr):
-    from .db import connect
-    with connect() as conn:
-        return conn.execute(
-            "SELECT from_address, amount_raw, timestamp FROM transactions WHERE to_address = ?",
-            (addr,)).fetchall()
+    return store.get_inbound_rows(addr)
 
 
 def _month_span(addr, payers):
@@ -147,7 +153,6 @@ def _month_span(addr, payers):
     if not ts:
         return 0
     lo, hi = min(ts), max(ts)
-    from datetime import datetime, timezone
     a = datetime.fromtimestamp(lo, tz=timezone.utc)
     b = datetime.fromtimestamp(hi, tz=timezone.utc)
     return (b.year - a.year) * 12 + (b.month - a.month) + 1

@@ -107,6 +107,17 @@ def outbound_transfers(addresses: set[str]) -> list[tuple[str, int, int]]:
     return [(r[0], r[1], r[2]) for r in rows]
 
 
+def get_inbound_rows(address: str) -> list[tuple[str, int, int]]:
+    """(from_address, amount_raw, timestamp) for transfers TO `address`."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT from_address, amount_raw, timestamp FROM transactions "
+            "WHERE to_address = ?",
+            (address,),
+        ).fetchall()
+    return [(r[0], r[1], r[2]) for r in rows]
+
+
 # --- wallets / roles / clusters ---------------------------------------------
 
 

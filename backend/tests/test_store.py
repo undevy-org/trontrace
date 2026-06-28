@@ -36,6 +36,17 @@ def test_wallet_context_queries(temp_db):
     assert amts == [10, 20]
 
 
+def test_inbound_rows_returns_from_amount_timestamp(temp_db):
+    store.insert_transactions([
+        _tx("i1", "SRC1", "R1", 100, 3000),
+        _tx("i2", "SRC2", "R1", 200, 3100),
+        _tx("o1", "R1", "OUT", 50, 3200),   # outbound from R1 -> ignored
+    ])
+    rows = store.get_inbound_rows("R1")
+    assert sorted(rows) == [("SRC1", 100, 3000), ("SRC2", 200, 3100)]
+    assert store.get_inbound_rows("UNKNOWN") == []
+
+
 def test_paid_to_anchor_within_window(temp_db):
     # last inbound at ts=10_000_000; window of 1 day = 86400s -> cutoff 9_913_600
     store.insert_transactions([
