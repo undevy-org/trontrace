@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project adheres to semantic versioning.
 
+## [Unreleased]
+
+### Added
+- **Recipient-side fan-in gate** (`is_exchange_recipient`, opt-in via `recipient_gate`): a
+  counterparty fed by many distinct senders (`recipient_fanin_cap`, default 50) is flagged as
+  exchange/processor and dropped from the counterparty list. Motivated by real-data analysis —
+  top "counterparties" by volume were exchange deposit hubs (150–700+ distinct senders), not
+  genuine peers. Off by default (adds an inbound fetch per counterparty).
+
 ## [0.1.0] — 2026-06-28
 
 First working release: trace TRC-20 token cash flows from a single anchor wallet.

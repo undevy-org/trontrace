@@ -10,7 +10,7 @@ run can resume without re-fetching (see worker.py).
 from __future__ import annotations
 
 from . import store
-from .analysis.classify import is_exchange, known_exchanges
+from .analysis.classify import is_exchange, is_exchange_recipient, known_exchanges
 from .analysis.cluster import cluster_wallets, select_primary_payer
 from .analysis.counterparties import derive_counterparties
 from .analysis.monthly import Transfer, aggregate_monthly
@@ -99,6 +99,10 @@ async def run_analysis(anchor: str, client: TronGridClient) -> None:
     counterparties, _needs_check = derive_counterparties(
         primary_recipients, anchor, exchange_addrs, payers=primary_members
     )
+    if settings.recipient_gate:
+        counterparties = await _apply_recipient_gate(
+            counterparties, client, exchange_addrs, anchor
+        )
     for cp in counterparties:
         store.upsert_wallet(cp, role="counterparty")
 
@@ -110,3 +114,28 @@ async def run_analysis(anchor: str, client: TronGridClient) -> None:
     store.write_monthly_stats(aggregate_monthly(transfers))
 
     store.set_progress(phase="done", percent=100)
+
+
+async def _apply_recipient_gate(
+    counterparties: set[str], client: TronGridClient, exchange_addrs: set[str], anchor: str
+) -> set[str]:
+    """Recipient-side fan-in gate (v1.1): flag counterparties fed by many distinct senders as
+    exchange/processor and drop them from the counterparty set. Bounded by config caps."""
+    cleaned: set[str] = set()
+    checked = 0
+    for cp in sorted(counterparties):
+        if checked >= settings.recipient_gate_max_checks:
+            cleaned.add(cp)
+            continue
+        checked += 1
+        res = await client.fetch_transfers(
+            cp, direction="in", max_records=settings.recipient_inbound_cap
+        )
+        store.insert_transactions(res.records)
+        senders = store.get_funding_sources(cp) - {anchor}
+        if is_exchange_recipient(cp, distinct_senders=len(senders)):
+            store.set_role(cp, "exchange")
+            exchange_addrs.add(cp)
+        else:
+            cleaned.add(cp)
+    return cleaned

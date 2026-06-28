@@ -31,10 +31,17 @@ class Settings(BaseSettings):
 
     # --- Fetch caps (also act as exchange-detection signals) ---
     candidate_tx_cap: int = 5000            # stop + flag exchange past this many txs
-    fanout_cap: int = 2000                  # distinct-recipient ceiling for non-exchange
+    fanout_cap: int = 2000                  # distinct-recipient ceiling for non-exchange (sender-side)
     funding_fetch_cap: int = 1000           # max inbound txs fetched per candidate
+    recipient_fanin_cap: int = 50           # distinct-sender ceiling for a real counterparty (recipient-side gate, v1.1)
 
     # --- Clustering ---
+    # recipient-side exchange gate (v1.1, opt-in): fetch each counterparty's inbound and flag
+    # high-fan-in recipients as exchange/processor. Off by default (extra network cost).
+    recipient_gate: bool = False
+    recipient_gate_max_checks: int = 200     # bound live fan-in fetches per run
+    recipient_inbound_cap: int = 3000        # max inbound txs fetched per counterparty
+
     score_threshold: float = 0.55           # average-linkage merge cutoff (tau)
     weight_overlap: float = 0.50            # base signal
     weight_rhythm: float = 0.30             # base signal
