@@ -1,0 +1,16 @@
+[project]
+name = "trontrace"
+version = "0.1.0"
+description = "Trace TRC-20 token cash flows from a single anchor wallet."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = [
+    # third-party: starlette TestClient deprecation around httpx, not our code
+    "ignore:Using `httpx` with `starlette.testclient`",
+]
+
+[tool.ruff]
+line-length = 100

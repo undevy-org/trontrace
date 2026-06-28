@@ -1,0 +1,50 @@
+"""Central configuration.
+
+All tunables live here and are overridable via environment variables / .env, so the
+heuristics can be adjusted without touching code. Defaults match the design spec.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Repo-root .env (config.py is backend/app/config.py -> parents[2] is the repo root).
+# In Docker the vars arrive via the environment, so a missing file here is harmless.
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
+
+    # --- TronGrid ---
+    trongrid_api_key: str = ""
+    trongrid_base_url: str = "https://api.trongrid.io"
+    trongrid_max_rps: float = 12.0          # free keys cap at 15 rps; stay below
+    trongrid_timeout_s: float = 30.0
+    trongrid_max_retries: int = 3
+
+    # --- Token under analysis (default: USDT TRC-20) ---
+    token_symbol: str = "USDT"
+    token_contract: str = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+    token_decimals: int = 6                 # USDT TRC-20 uses 6 decimals
+
+    # --- Fetch caps (also act as exchange-detection signals) ---
+    candidate_tx_cap: int = 5000            # stop + flag exchange past this many txs
+    fanout_cap: int = 2000                  # distinct-recipient ceiling for non-exchange
+    funding_fetch_cap: int = 1000           # max inbound txs fetched per candidate
+
+    # --- Clustering ---
+    score_threshold: float = 0.55           # average-linkage merge cutoff (tau)
+    weight_overlap: float = 0.50            # base signal
+    weight_rhythm: float = 0.30             # base signal
+    weight_funding: float = 0.20            # positive-only bonus (absence never penalizes)
+    employer_window_days: int = 180         # recent window for primary-payer selection
+
+    # --- Server / storage ---
+    backend_host: str = "0.0.0.0"
+    backend_port: int = 8000
+    db_path: str = "data/trontrace.db"
+
+
+settings = Settings()
