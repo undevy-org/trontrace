@@ -118,7 +118,7 @@ Deterministic given fixed input; bounds intra-cluster cohesion; resists weak-cha
 ## Selecting the primary payer
 
 Among clusters, the primary payer maximizes **total token paid to the anchor within
-`EMPLOYER_WINDOW_DAYS`** — *not* member count. (A missed exchange would form a large cluster but
+`PAYER_WINDOW_DAYS`** — *not* member count. (A missed exchange would form a large cluster but
 is not the one paying the anchor.) All other candidates are labeled `noise`.
 
 **Cluster confidence** = `avg_pairwise_score × signal_breadth`, where `signal_breadth` is the

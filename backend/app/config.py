@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     weight_overlap: float = 0.50            # base signal
     weight_rhythm: float = 0.30             # base signal
     weight_funding: float = 0.20            # positive-only bonus (absence never penalizes)
-    employer_window_days: int = 180         # recent window for primary-payer selection
+    payer_window_days: int = 180         # recent window for primary-payer selection
 
     # --- Recipient scoring (v1.1 expansion, pure) ---
     expand_tier_high: float = 0.70

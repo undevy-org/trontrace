@@ -146,7 +146,7 @@ the wallet-detail side panel. No dedicated graph view in v1 (YAGNI).
   budget); per-wallet fetch caps reused from the base config.
 - **Checkpoint**: reuse the `progress` row + `INSERT OR IGNORE` + `discovered_round`; an
   interrupted run resumes without re-fetching. Never lose fetched data.
-- **Transparency**: per-round log (new recipients/employers, fetches spent). If a cap bounds the
+- **Transparency**: per-round log (new recipients/payers, fetches spent). If a cap bounds the
   result, emit an explicit warning — no silent truncation.
 
 ## Error Handling

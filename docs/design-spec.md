@@ -9,13 +9,13 @@
 ## Problem Statement
 
 The user receives USDT (TRC-20) payments on their TRON wallet from multiple sender
-addresses. These senders belong to a single employer/counterparty who **rotates wallets**
-over time. The same employer also pays many other recipients on a recurring schedule.
+addresses. These senders belong to a single source entity who **rotates wallets**
+over time. The same entity also pays many other recipients on a recurring schedule.
 
 The user wants a **local** tool that, from their wallet address alone:
 
-1. Identifies which wallets belong to the employer despite rotation.
-2. Identifies the other recipients (counterparties) paid by the same employer.
+1. Identifies which wallets belong to the source entity despite rotation.
+2. Identifies the other recipients (counterparties) paid by the same entity.
 3. Shows monthly statistics: how much each counterparty receives per calendar month.
 
 **Single anchor input:** the user's wallet address only. No manual labeling in v1.
@@ -59,9 +59,9 @@ User wallet
     │
  ④  Pairwise similarity + clustering   → wallet clusters
     │
- ⑤  Select Employer cluster            → by USDT paid to the user (not by size)
+ ⑤  Select Primary-payer cluster            → by USDT paid to the user (not by size)
     │
- ⑥  Derive counterparties              → employer-cluster recipients minus user/exchanges
+ ⑥  Derive counterparties              → primary-payer-cluster recipients minus user/exchanges
     │
  ⑦  Monthly totals per counterparty
 ```
@@ -70,9 +70,9 @@ User wallet
 
 Two real-world facts drive every decision below:
 
-- **Salaries are often paid via exchange withdrawals.** The on-chain sender is then a CEX
+- **Recurring payments are often made via exchange withdrawals.** The on-chain sender is then a CEX
   hot wallet (Binance/OKX/…) with **millions** of recipients. A naïve recipient-overlap
-  metric would fuse half an exchange into one "employer" cluster and label random strangers
+  metric would fuse half an exchange into one "source-entity" cluster and label random strangers
   as counterparties. → We must detect and exclude high-fan-out / custodial wallets **before**
   clustering (§3).
 - **Unbounded fetch is intractable.** "Fetch all outbound for every sender" hits TronGrid
@@ -86,9 +86,9 @@ Two real-world facts drive every decision below:
   excluding any address flagged as an exchange/custodial wallet.
 - **Funding set** `F(W)` — distinct addresses that sent USDT **to** W (W's top-up sources),
   capped (§7).
-- **Employer cluster** — the cluster maximizing total USDT paid to the user in the recent
+- **Primary-payer cluster** — the cluster maximizing total USDT paid to the user in the recent
   window (§4.3).
-- **Counterparty** — any address in `⋃ R(W)` over employer-cluster wallets W, excluding the
+- **Counterparty** — any address in `⋃ R(W)` over primary-payer-cluster wallets W, excluding the
   user. Exchange-flagged recipients are surfaced separately, not as ordinary counterparties.
 
 ---
@@ -105,7 +105,7 @@ and from counterparty derivation) if **any** of:
    `CANDIDATE_TX_CAP` (default **5,000** tx) and pagination is not exhausted → treat as
    high-volume, stop fetching, flag EXCHANGE.
 3. **Fan-out threshold** — distinct outbound recipient count `|R_raw(W)| > FANOUT_CAP`
-   (default **2,000**). A genuine private employer wallet rarely pays thousands of distinct
+   (default **2,000**). A genuine private entity wallet rarely pays thousands of distinct
    addresses; an exchange does.
 
 EXCHANGE-flagged candidates are kept in the DB with `role = 'exchange'`, shown in the Overview
@@ -179,12 +179,12 @@ average-linkage** clustering with threshold `τ`:
 This bounds intra-cluster cohesion (every member is on average similar to the rest) and
 prevents weak-chain blow-ups. Deterministic given fixed input.
 
-### 4.3 Selecting the Employer cluster
+### 4.3 Selecting the Primary-payer cluster
 
-Among the resulting clusters, the **Employer** is the cluster maximizing **total USDT paid to
-the user within the recent window** (`EMPLOYER_WINDOW`, default last **6 months**) — *not* the
+Among the resulting clusters, the **primary payer** is the cluster maximizing **total USDT paid to
+the user within the recent window** (`PAYER_WINDOW`, default last **6 months**) — *not* the
 largest cluster by member count. Rationale: a missed exchange that slipped the gate would form
-a big cluster, but it is not the one paying you a salary.
+a big cluster, but it is not the one paying the anchor.
 
 All other candidate senders are labeled **Noise** (`role = 'noise'`) and excluded from
 counterparty statistics.
@@ -205,12 +205,12 @@ alone. Surfaced as a percentage in the UI; clamped to `[0, 1]`.
 
 ### 5.1 Counterparty derivation
 
-Counterparties = distinct recipients across all Employer-cluster wallets, **excluding** the
+Counterparties = distinct recipients across all Primary-payer-cluster wallets, **excluding** the
 user and excluding exchange-flagged recipients. Exchange-flagged recipients are listed in a
 separate "Needs manual check" group with a Tronscan link rather than counted as income.
 
 > **Known limitation (stated in UI):** counterparty discovery is anchored on wallets that paid
-> *the user*. Employer wallets that pay others but never paid the user are invisible to this
+> *the user*. Entity wallets that pay others but never paid the user are invisible to this
 > method, so the counterparty list is necessarily **partial**.
 
 ### 5.2 Monthly statistics
@@ -234,7 +234,7 @@ separate "Needs manual check" group with a Tronscan link rather than counted as 
 - One active analysis at a time in v1.
 
 ### Screen 2 — Overview
-- Employer cluster: grouped wallets with confidence %.
+- Primary-payer cluster: grouped wallets with confidence %.
 - User payments: total and monthly average.
 - Counterparty count.
 - **Excluded (likely exchange):** collapsed section listing gated hot wallets.
@@ -251,14 +251,14 @@ separate "Needs manual check" group with a Tronscan link rather than counted as 
 
 ### Screen 4 — Connection Graph
 - Interactive Cytoscape.js graph.
-- Node colors: green = employer cluster · blue = user · yellow = counterparties ·
+- Node colors: green = primary-payer cluster · blue = anchor · yellow = counterparties ·
   gray = noise · red = excluded exchange.
 - Edge thickness proportional to USDT volume.
 - Month filter rebuilds the graph for the selected period.
 
 ### Screen 5 — Wallet Detail (side panel)
 - Full address with copy.
-- Role: Employer / Counterparty / Noise / Exchange.
+- Role: Primary payer / Counterparty / Noise / Exchange.
 - Confidence %.
 - First/last activity.
 - Top 5 senders / recipients.
@@ -306,7 +306,7 @@ Browser (React) ←HTTP→ FastAPI Backend
 | `FANOUT_CAP`        | 2,000     | Distinct-recipient ceiling for non-exchange        |
 | `FUNDING_FETCH_CAP` | 1,000     | Max inbound tx fetched per candidate (Signal 3)    |
 | `SCORE_THRESHOLD τ` | 0.60      | Average-linkage merge threshold                    |
-| `EMPLOYER_WINDOW`   | 6 months  | Recent window for Employer selection               |
+| `PAYER_WINDOW`   | 6 months  | Recent window for primary-payer selection               |
 | Signal weights      | .50/.30/.20 | overlap / rhythm / funding                        |
 
 ---
@@ -328,7 +328,7 @@ For each candidate, in order:
 
 ### 8.3 Phase 3 — Clustering
 Compute pairwise scores among non-exchange candidates → average-linkage clustering → select
-Employer cluster by USDT-to-user in `EMPLOYER_WINDOW` → write `clusters` + `wallets.role`.
+Primary-payer cluster by USDT-to-user in `PAYER_WINDOW` → write `clusters` + `wallets.role`.
 
 ### 8.4 Phase 4 — Aggregation
 Derive counterparties (§5.1) → compute `monthly_stats` grouped by counterparty and UTC month,
@@ -350,7 +350,7 @@ wallets
   address      TEXT PRIMARY KEY,
   first_seen   INTEGER,            -- unix seconds, UTC
   last_seen    INTEGER,
-  role         TEXT,               -- 'user' | 'employer' | 'counterparty' | 'noise' | 'exchange'
+  role         TEXT,               -- 'anchor' | 'primary_payer' | 'counterparty' | 'noise' | 'exchange'
   cluster_id   INTEGER             -- nullable; FK → clusters.cluster_id
 
 transactions
@@ -363,7 +363,7 @@ transactions
 
 clusters
   cluster_id   INTEGER PRIMARY KEY,
-  label        TEXT,               -- 'Employer' | 'Noise' | ...
+  label        TEXT,               -- 'primary_payer' | 'noise' | ...
   confidence   REAL,               -- [0,1]
   created_at   INTEGER
 
@@ -485,15 +485,15 @@ exercise the exchange gate.
 
 | Case                                          | v1 Behavior                                              |
 |-----------------------------------------------|---------------------------------------------------------|
-| Salary paid via exchange withdrawal           | Sender flagged `exchange`, excluded; surfaced in Overview |
-| Non-employer senders (refunds, friends)       | Classified as Noise                                     |
-| Employer changed scheme years ago             | May yield multiple clusters; recent USDT-to-user = Employer |
+| Payment via exchange withdrawal           | Sender flagged `exchange`, excluded; surfaced in Overview |
+| Non-entity senders (refunds, friends)       | Classified as Noise                                     |
+| Entity changed scheme years ago             | May yield multiple clusters; recent USDT-to-anchor = primary payer |
 | Counterparty with multiple wallets            | Each address = separate table row                       |
-| Multiple employer wallets pay user same day   | Summed into single "You" monthly cell                   |
+| Multiple entity wallets pay user same day   | Summed into single "You" monthly cell                   |
 | < 3 months of history                         | Low-confidence disclaimer banner on Overview            |
 | Exchange/mixer as recipient                   | "Needs manual check" group, Tronscan link, not counted  |
 | Candidate with > cap transactions             | Flagged `exchange` on cap-hit                            |
-| Employer wallet that never paid the user      | Not discoverable; counterparty list is partial (stated) |
+| Entity wallet that never paid the anchor      | Not discoverable; counterparty list is partial (stated) |
 
 ---
 
@@ -502,8 +502,8 @@ exercise the exchange gate.
 - [ ] Address input and analysis with progress UI
 - [ ] Full USDT history fetch via TronGrid with SQLite cache and per-candidate caps
 - [ ] Exchange/hot-wallet gate (static list + cap-hit + fan-out)
-- [ ] Auto-cluster senders into Employer / Noise via average-linkage on the 3-signal score
-- [ ] Counterparty list (employer-cluster recipients minus user/exchanges)
+- [ ] Auto-cluster senders into Primary payer / Noise via average-linkage on the 3-signal score
+- [ ] Counterparty list (primary-payer-cluster recipients minus user/exchanges)
 - [ ] Monthly table: counterparty × month × USDT (integer-summed) with filters
 - [ ] "You" row in monthly table
 - [ ] Interactive connection graph with month filter and exchange/noise coloring
@@ -543,7 +543,7 @@ exercise the exchange gate.
   deep-fetched).
 - Clustering is heuristic (target ~80–90% precision on clean private-wallet schemes, lower with
   exchange involvement; not forensic-grade). Every figure is an estimate.
-- Single user-wallet entry point → counterparty list is partial (employer wallets that never
+- Single user-wallet entry point → counterparty list is partial (entity wallets that never
   paid the user are invisible).
 - Calendar months in UTC.
 - No manual override in v1.

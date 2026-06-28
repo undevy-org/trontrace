@@ -73,7 +73,7 @@ async def run_analysis(anchor: str, client: TronGridClient) -> None:
     # --- Phase 4-5: clustering + primary-payer selection ---
     store.set_progress(phase="clustering", percent=70)
     clusters = cluster_wallets(contexts)
-    paid_recent = store.get_paid_to_anchor_recent(anchor, settings.employer_window_days)
+    paid_recent = store.get_paid_to_anchor_recent(anchor, settings.payer_window_days)
     primary = select_primary_payer(clusters, paid_recent)
 
     next_cluster_id = 1

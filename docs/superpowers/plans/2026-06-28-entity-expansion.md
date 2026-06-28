@@ -14,7 +14,7 @@
 - Time is UTC; month buckets are `YYYY-MM`.
 - Analysis logic in `app/analysis/` must be pure (no network/DB) and unit-tested.
 - All thresholds/weights live in `app/config.py`, environment-overridable.
-- Generic public vocabulary only — no "employer/salary/colleague" in code, identifiers, comments, or commit messages. Use payer / recipient / entity / cohort.
+- Generic public vocabulary only — use payer / recipient / entity / cohort; no scenario-specific role nouns in code, identifiers, comments, or commit messages.
 - No live TronGrid calls in tests; use `httpx.MockTransport`.
 - Run tests from `backend/` with the project venv: `.venv/bin/python -m pytest`.
 - End commit messages with: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
