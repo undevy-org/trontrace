@@ -74,6 +74,12 @@ class Settings(BaseSettings):
     expand_max_recipients: int = 5000
     expand_max_total_fetches: int = 4000
 
+    # --- Consistent-amount ranking (pure) ---
+    consistent_band_low: int = 500_000000        # base units (~$500)
+    consistent_band_high: int = 12000_000000     # base units (~$12000)
+    consistent_min_consistency: float = 0.80
+    consistent_min_months: int = 4
+
     # --- Server / storage ---
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
