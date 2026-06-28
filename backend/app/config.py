@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     consistent_band_high: int = 12000_000000     # base units (~$12000)
     consistent_min_consistency: float = 0.80
     consistent_min_months: int = 4
+    consistent_change_amount_tol: float = 0.10    # max relative amount difference for a hint
+    consistent_change_max_gap_months: int = 1     # max month-hole between adjacent ranges
 
     # --- Server / storage ---
     backend_host: str = "0.0.0.0"

@@ -1,4 +1,4 @@
-from app.analysis.consistency import ConsistentRow, consistent_rows
+from app.analysis.consistency import ConsistentRow, consistent_rows, wallet_change_hints
 
 M = 1_000_000  # 1 USDT in base units
 
@@ -21,3 +21,24 @@ def test_consistent_rows_filters_and_sorts():
     assert rows[0].median_monthly == 3000 * M
     assert rows[0].months_paid == 6
     assert rows[0].consistency >= 0.99
+
+
+def test_wallet_change_hint_flags_adjacent_equal_amount():
+    rows = [ConsistentRow("A", 3000 * M, 5, 0.95), ConsistentRow("B", 3000 * M, 4, 0.95)]
+    timelines = {
+        "A": _series(1, [3000 * M] * 5),   # 2025-01..2025-05
+        "B": _series(6, [3000 * M] * 4),   # 2025-06..2025-09  (adjacent, no overlap)
+    }
+    hints = wallet_change_hints(rows, timelines)
+    assert [(h[0], h[1]) for h in hints] == [("A", "B")]
+
+
+def test_no_hint_for_overlap_or_different_amount():
+    rows = [ConsistentRow("A", 3000 * M, 5, 0.95), ConsistentRow("C", 9000 * M, 5, 0.95),
+            ConsistentRow("D", 3000 * M, 5, 0.95)]
+    timelines = {
+        "A": _series(1, [3000 * M] * 5),    # 2025-01..05
+        "C": _series(6, [9000 * M] * 5),    # adjacent but different amount -> no hint
+        "D": _series(3, [3000 * M] * 5),    # same amount but overlaps A -> no hint
+    }
+    assert wallet_change_hints(rows, timelines) == []
