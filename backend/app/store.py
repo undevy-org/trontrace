@@ -350,3 +350,27 @@ def graph_raw(month: str | None = None) -> dict:
             {"source": s, "target": t, "weight_raw": w} for (s, t), w in weights.items()
         ],
     }
+
+
+# --- entity nodes -----------------------------------------------------------
+
+
+def upsert_entity_node(address, *, kind, confidence, tier, first_pay=None, last_pay=None,
+                       months_active=None, total_raw=None, n_payers=None, discovered_round=None):
+    with connect() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO entity_nodes "
+            "(address, kind, confidence, tier, first_pay, last_pay, months_active, "
+            " total_raw, n_payers, discovered_round) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (address, kind, confidence, tier, first_pay, last_pay, months_active,
+             total_raw, n_payers, discovered_round),
+        )
+
+
+def read_entity_nodes(kind: str) -> list[dict]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM entity_nodes WHERE kind = ? ORDER BY confidence DESC, address",
+            (kind,),
+        ).fetchall()
+    return [dict(r) for r in rows]

@@ -51,3 +51,14 @@ def test_progress_roundtrip(temp_db):
     store.set_progress(anchor="ANCHOR", phase="inbound", percent=20)
     p = store.get_progress()
     assert p["phase"] == "inbound" and p["percent"] == 20
+
+
+def test_entity_nodes_roundtrip_ordered_by_confidence(temp_db):
+    store.upsert_entity_node("R1", kind="recipient", confidence=0.9, tier="high",
+                             months_active=12, total_raw=72_000000, n_payers=2)
+    store.upsert_entity_node("R2", kind="recipient", confidence=0.5, tier="med",
+                             months_active=4, total_raw=20_000000, n_payers=1)
+    store.upsert_entity_node("W3", kind="payer", confidence=0.8, tier="high")
+    recips = store.read_entity_nodes("recipient")
+    assert [r["address"] for r in recips] == ["R1", "R2"]   # confidence desc
+    assert store.read_entity_nodes("payer")[0]["address"] == "W3"

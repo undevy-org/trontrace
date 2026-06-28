@@ -53,6 +53,19 @@ CREATE TABLE IF NOT EXISTS progress (
     updated_at       INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS entity_nodes (
+    address          TEXT PRIMARY KEY,
+    kind             TEXT NOT NULL,     -- 'payer' | 'recipient'
+    confidence       REAL,
+    tier             TEXT,              -- 'high' | 'med' | 'low'
+    first_pay        INTEGER,
+    last_pay         INTEGER,
+    months_active    INTEGER,
+    total_raw        INTEGER,
+    n_payers         INTEGER,
+    discovered_round INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_tx_from    ON transactions(from_address);
 CREATE INDEX IF NOT EXISTS idx_tx_to      ON transactions(to_address);
 CREATE INDEX IF NOT EXISTS idx_tx_time    ON transactions(timestamp);
