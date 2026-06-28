@@ -45,6 +45,11 @@ export interface Cohort {
   recipients: { address: string; tier: string; confidence: number; months_active: number; total: string }[];
 }
 
+export interface Consistent {
+  rows: { address: string; amount: string; months: number; consistency: number }[];
+  hints: { a: string; b: string; reason: string }[];
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}/api${path}`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -65,5 +70,6 @@ export const api = {
   graph: (month?: string) => get<GraphData>(`/graph?month=${month ?? ""}`),
   wallet: (address: string) => get<WalletDetail>(`/wallet/${address}`),
   cohort: () => get<Cohort>("/cohort"),
+  consistent: (params = "") => get<Consistent>(`/consistent${params}`),
   csvUrl: () => `${BASE}/api/export/csv`,
 };
