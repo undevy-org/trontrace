@@ -89,3 +89,19 @@ def test_cohort_and_entity_wallets_endpoints(temp_db):
     assert cohort["recipients"][0]["total"] == "72"      # decimal-formatted
     wallets = client.get("/api/entity-wallets").json()
     assert wallets["wallets"][0]["address"] == "W3"
+
+
+def test_consistent_endpoint(temp_db):
+    from app.analysis.monthly import MonthlyCell
+    from app import store
+    cells = [MonthlyCell("A", f"2025-{m:02d}", 3_000_000_000, 1) for m in range(1, 6)]
+    cells += [MonthlyCell("B", f"2025-{m:02d}", 3_000_000_000, 1) for m in range(6, 10)]
+    cells += [MonthlyCell("BIG", f"2025-{m:02d}", 50_000_000_000_000, 1) for m in range(1, 6)]
+    store.write_monthly_stats(cells)
+    client = TestClient(app)
+    data = client.get("/api/consistent?band_low=500000000&band_high=12000000000"
+                      "&min_consistency=0.8&min_months=4").json()
+    addrs = {r["address"] for r in data["rows"]}
+    assert addrs == {"A", "B"}                      # BIG dropped by band
+    assert data["rows"][0]["amount"] == "3000"      # decimal-formatted
+    assert ["A", "B"] in [[h["a"], h["b"]] for h in data["hints"]]   # adjacent equal-amount pair

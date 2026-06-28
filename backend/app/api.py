@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from . import store
+from .analysis.consistency import consistent_rows, wallet_change_hints
 from .analysis.monthly import raw_to_decimal_str
 from .config import settings
 from .worker import AnalysisAlreadyRunning, manager
@@ -160,3 +161,25 @@ async def entity_wallets():
     return {"wallets": [
         {"address": r["address"], "tier": r["tier"], "confidence": r["confidence"]}
         for r in rows]}
+
+
+@router.get("/consistent")
+async def consistent(band_low: int | None = None, band_high: int | None = None,
+                     min_consistency: float | None = None, min_months: int | None = None):
+    timelines = store.cohort_timelines()
+    rows = consistent_rows(
+        timelines,
+        band_low=band_low if band_low is not None else settings.consistent_band_low,
+        band_high=band_high if band_high is not None else settings.consistent_band_high,
+        min_consistency=min_consistency if min_consistency is not None else settings.consistent_min_consistency,
+        min_months=min_months if min_months is not None else settings.consistent_min_months,
+    )
+    hints = wallet_change_hints(rows, timelines)
+    return {
+        "rows": [
+            {"address": r.address, "amount": _fmt(r.median_monthly),
+             "months": r.months_paid, "consistency": round(r.consistency, 2)}
+            for r in rows
+        ],
+        "hints": [{"a": a, "b": b, "reason": reason} for a, b, reason in hints],
+    }
