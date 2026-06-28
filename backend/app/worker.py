@@ -42,6 +42,19 @@ class AnalysisManager:
         """Run an analysis to completion (convenience wrapper around start_task)."""
         await self.start_task(anchor)
 
+    def start_expansion_task(self, anchor: str):
+        if self.is_running():
+            raise AnalysisAlreadyRunning()
+        import asyncio
+        from .expansion import run_expansion
+
+        async def _run():
+            async with self._factory() as client:
+                await run_expansion(anchor, client)
+
+        self._task = asyncio.create_task(_run())
+        return self._task
+
     def status(self) -> dict:
         return store.get_progress() or {"phase": "idle", "percent": 0}
 

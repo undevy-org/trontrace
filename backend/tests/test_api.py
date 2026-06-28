@@ -76,3 +76,16 @@ def test_wallet_and_graph(temp_db):
         assert all("weight_raw" not in e for e in g["edges"])  # API formats to decimal string
     finally:
         settings.fanout_cap = old
+
+
+def test_cohort_and_entity_wallets_endpoints(temp_db):
+    from app import store
+    store.upsert_entity_node("R1", kind="recipient", confidence=0.9, tier="high",
+                             months_active=12, total_raw=72_000000, n_payers=2)
+    store.upsert_entity_node("W3", kind="payer", confidence=0.8, tier="high")
+    client = TestClient(app)
+    cohort = client.get("/api/cohort").json()
+    assert cohort["recipients"][0]["address"] == "R1"
+    assert cohort["recipients"][0]["total"] == "72"      # decimal-formatted
+    wallets = client.get("/api/entity-wallets").json()
+    assert wallets["wallets"][0]["address"] == "W3"

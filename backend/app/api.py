@@ -132,3 +132,31 @@ async def export_csv():
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=trontrace.csv"},
     )
+
+
+@router.post("/expand")
+async def expand(req: AnalyzeRequest):
+    if not _TRON_ADDRESS.match(req.address):
+        raise HTTPException(400, "Invalid TRON address")
+    try:
+        manager.start_expansion_task(req.address)
+    except AnalysisAlreadyRunning:
+        raise HTTPException(409, "An analysis is already running")
+    return {"status": "started", "address": req.address}
+
+
+@router.get("/cohort")
+async def cohort():
+    rows = store.read_entity_nodes("recipient")
+    return {"recipients": [
+        {"address": r["address"], "tier": r["tier"],
+         "confidence": r["confidence"], "months_active": r["months_active"],
+         "total": _fmt(r["total_raw"])} for r in rows]}
+
+
+@router.get("/entity-wallets")
+async def entity_wallets():
+    rows = store.read_entity_nodes("payer")
+    return {"wallets": [
+        {"address": r["address"], "tier": r["tier"], "confidence": r["confidence"]}
+        for r in rows]}
