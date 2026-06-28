@@ -30,10 +30,9 @@ def aligns_with_cycle(timestamp: int, fingerprint: set[int], tolerance_days: int
     return any(abs(day - peak) <= tolerance_days for peak in fingerprint)
 
 
-def _recurrence(months_paid: int, months_span: int) -> float:
-    if months_span <= 0:
-        return 0.0
-    return min(1.0, months_paid / months_span)
+def _recurrence(months_paid: int) -> float:
+    """Reward absolute tenure: full credit at recurrence_target_months paid months."""
+    return min(1.0, months_paid / settings.recurrence_target_months)
 
 
 def _amount_stability(amounts: list[int]) -> float:
@@ -51,7 +50,6 @@ def _amount_stability(amounts: list[int]) -> float:
 class RecipientFeatures:
     n_payers: int
     months_paid: int
-    months_span: int
     aligned_fraction: float
     amounts: list[int] = field(default_factory=list)
     distinct_senders: int = 0
@@ -59,7 +57,7 @@ class RecipientFeatures:
 
 def recipient_score(f: RecipientFeatures) -> float:
     corec = min(1.0, f.n_payers / max(1, settings.corecipient_min_k))
-    rec = _recurrence(f.months_paid, f.months_span)
+    rec = _recurrence(f.months_paid)
     align = max(0.0, min(1.0, f.aligned_fraction))
     stab = _amount_stability(f.amounts)
     fanin = 0.0 if f.distinct_senders > settings.recipient_fanin_cap else 1.0
@@ -68,6 +66,10 @@ def recipient_score(f: RecipientFeatures) -> float:
              + settings.w_rec_paycycle * align
              + settings.w_rec_stability * stab
              + settings.w_rec_fanin * fanin)
+    # Hard gate: a recipient paid in fewer than recurrence_min_months distinct months is
+    # not recurring — clamp below Med/High so it never joins the expansion cohort.
+    if f.months_paid < settings.recurrence_min_months:
+        return min(score, settings.expand_tier_med - 1e-6)
     return min(1.0, score)
 
 

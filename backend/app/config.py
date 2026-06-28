@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     expand_tier_high: float = 0.70
     expand_tier_med: float = 0.45
     corecipient_min_k: int = 2              # min known recipients a payer must co-pay (K)
+    recurrence_target_months: int = 6       # months_paid at/above this -> full recurrence credit
+    recurrence_min_months: int = 2          # below this, recipient is not "recurring" (hard gate)
     # recipient score weights (sum 1.0)
     w_rec_corecipient: float = 0.35
     w_rec_recurrence: float = 0.25

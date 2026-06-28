@@ -4,6 +4,7 @@ from app.analysis.expansion_signals import (
     RecipientFeatures, recipient_score, tier,
     PayerFeatures, payer_score,
 )
+from app.config import settings
 
 
 def _ts(y, m, d):
@@ -24,14 +25,16 @@ def test_aligns_within_tolerance():
 
 
 def test_recipient_score_high_for_recurring_lowfanin():
-    f = RecipientFeatures(n_payers=2, months_paid=12, months_span=12,
+    # months_paid=12 -> recurrence=min(1.0,12/6)=1.0; still high
+    f = RecipientFeatures(n_payers=2, months_paid=12,
                           aligned_fraction=1.0, amounts=[6000, 6000, 6000], distinct_senders=3)
     assert recipient_score(f) >= 0.8
     assert tier(recipient_score(f)) == "high"
 
 
 def test_recipient_score_low_for_highfanin_oneoff():
-    f = RecipientFeatures(n_payers=1, months_paid=1, months_span=12,
+    # months_paid=1 -> hard-gated below Med; also high fan-in
+    f = RecipientFeatures(n_payers=1, months_paid=1,
                           aligned_fraction=0.0, amounts=[2_000_000], distinct_senders=400)
     assert recipient_score(f) < 0.45
     assert tier(recipient_score(f)) == "low"
@@ -50,3 +53,45 @@ def test_payer_score_zero_below_corroboration_or_exchange():
                          aligned_fraction=1.0, is_exchange=True)
     assert payer_score(below_k) == 0.0   # K defaults to 2
     assert payer_score(exch) == 0.0
+
+
+# --- Regression guard: single-month recipient must be hard-gated below Med ---
+def test_single_month_recipient_clamped_below_med_despite_strong_signals():
+    """Bug regression: a one-off payment must NOT reach Med/High tier.
+
+    Even with strong corroboration signals (3 payers, on pay-cycle, stable amount,
+    low fan-in), months_paid=1 must force the score below expand_tier_med.
+    """
+    f = RecipientFeatures(
+        n_payers=3,          # max co-recipient signal
+        months_paid=1,       # the bug: single month → was scoring 1.0 recurrence
+        aligned_fraction=1.0,  # perfectly on pay-cycle
+        amounts=[6000, 6000, 6000],  # perfectly stable
+        distinct_senders=3,  # low fan-in → fanin=1.0
+    )
+    score = recipient_score(f)
+    assert score < settings.expand_tier_med, (
+        f"Single-month recipient scored {score:.4f} >= med threshold "
+        f"{settings.expand_tier_med} — recurrence hard-gate is broken"
+    )
+    assert tier(score) == "low"
+
+
+# --- Genuine multi-month recipient must NOT be clamped ---
+def test_multi_month_recipient_not_clamped():
+    """A recipient paid across recurrence_min_months distinct months must be eligible
+    for Med/High — the hard-gate must only apply to single-month (non-recurring) cases.
+    """
+    f = RecipientFeatures(
+        n_payers=2,
+        months_paid=settings.recurrence_min_months,  # exactly at the gate
+        aligned_fraction=1.0,
+        amounts=[6000, 6000, 6000],
+        distinct_senders=3,
+    )
+    score = recipient_score(f)
+    # Must be allowed to reach Med (gate not applied); score won't be clamped
+    assert score >= settings.expand_tier_med, (
+        f"Multi-month recipient (months_paid={settings.recurrence_min_months}) scored "
+        f"{score:.4f} < med threshold {settings.expand_tier_med} — gate is over-restrictive"
+    )

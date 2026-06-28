@@ -7,8 +7,6 @@ Loops until no High/Med node is added (loop-until-dry) or caps are hit.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from . import store
 from .analysis import expansion_signals as sig
 from .analysis.classify import is_exchange_recipient
@@ -121,12 +119,11 @@ def _recipient_features(addr, payers, fingerprint, client_cache):
     from_payers = [(a, t) for f, a, t in rows if f in payers]
     n_payers = len({f for f, _a, _t in rows if f in payers})
     months = {year_month_utc(t) for _a, t in from_payers}
-    span_months = _month_span(addr, payers)
     aligned = ([sig.aligns_with_cycle(t, fingerprint, settings.paycycle_tolerance_days)
                 for _a, t in from_payers])
     aligned_fraction = (sum(aligned) / len(aligned)) if aligned else 0.0
     feats = sig.RecipientFeatures(
-        n_payers=n_payers, months_paid=len(months), months_span=span_months,
+        n_payers=n_payers, months_paid=len(months),
         aligned_fraction=aligned_fraction, amounts=[a for a, _t in from_payers],
         distinct_senders=len(senders))
     return feats, rows
@@ -148,16 +145,6 @@ def _payer_features(addr, cohort, fingerprint):
 
 def _inbound_rows(addr):
     return store.get_inbound_rows(addr)
-
-
-def _month_span(addr, payers):
-    ts = [t for f, _a, t in _inbound_rows(addr) if f in payers]
-    if not ts:
-        return 0
-    lo, hi = min(ts), max(ts)
-    a = datetime.fromtimestamp(lo, tz=timezone.utc)
-    b = datetime.fromtimestamp(hi, tz=timezone.utc)
-    return (b.year - a.year) * 12 + (b.month - a.month) + 1
 
 
 def _persist_recipient(addr, conf, t, feats):
