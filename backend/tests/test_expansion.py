@@ -73,3 +73,44 @@ def test_expansion_discovers_unknown_payer_and_cohort(temp_db):
     assert {"R1", "R2", "R3"} <= cohort   # full cohort found
     assert "EXHUB" not in cohort          # exchange excluded
     assert "UNREL" not in payers          # below corroboration K
+
+
+# Regression: a known payer (W2) that receives a payer-to-payer transit from another payer (W1)
+# must NOT be scored as a recipient — that would overwrite its payer node (INSERT OR REPLACE).
+def _transit_outbound(addr):
+    out = {
+        "W1": [_r("w1a", "W1", "ANCHOR", 6_000000, _ts(m, 1)) for m in range(1, 7)]
+              + [_r(f"w1r1{m}", "W1", "R1", 5_000000, _ts(m, 1)) for m in range(1, 7)]
+              + [_r("w1w2", "W1", "W2", 7_000000, _ts(2, 3))],   # payer-to-payer transit
+        "W2": [_r("w2a", "W2", "ANCHOR", 6_000000, _ts(m, 1)) for m in range(1, 7)]
+              + [_r(f"w2r1{m}", "W2", "R1", 5_000000, _ts(m, 1)) for m in range(1, 7)],
+    }
+    return out.get(addr, [])
+
+
+def _transit_inbound(addr):
+    inb = {
+        "R1": ([_r(f"w1r1{m}", "W1", "R1", 5_000000, _ts(m, 1)) for m in range(1, 7)]
+               + [_r(f"w2r1{m}", "W2", "R1", 5_000000, _ts(m, 1)) for m in range(1, 7)]),
+        "W2": [_r("w1w2", "W1", "W2", 7_000000, _ts(2, 3))],
+    }
+    return inb.get(addr, [])
+
+
+def _transit_handler(request):
+    addr = request.url.path.split("/")[3]
+    direction = "in" if request.url.params.get("only_to") else "out"
+    data = _transit_inbound(addr) if direction == "in" else _transit_outbound(addr)
+    return httpx.Response(200, json={"data": data, "meta": {}})
+
+
+def test_known_payer_not_reclassified_as_recipient(temp_db):
+    async def run():
+        async with TronGridClient(transport=httpx.MockTransport(_transit_handler), rps=10_000) as c:
+            await run_expansion("ANCHOR", c, seed_payers={"W1", "W2"})
+
+    asyncio.run(run())
+
+    recipients = {n["address"] for n in store.read_entity_nodes("recipient")}
+    assert "W2" not in recipients   # payer-to-payer transit must not reclassify a payer
+    assert "R1" in recipients       # genuine recipient still found

@@ -44,7 +44,9 @@ async def run_expansion(
         payer_frontier.clear()
 
         fingerprint = _fingerprint(payers, anchor)
-        candidates = _recipients_of(payers) - cohort - {anchor}
+        # Subtract `payers`: a known payer that receives from another payer (payer-to-payer
+        # transit) must not be scored as a recipient — that would overwrite its payer node.
+        candidates = _recipients_of(payers) - cohort - payers - {anchor}
         # Fetch each candidate's inbound to compute its fan-in (distinct_senders); this both
         # feeds the exchange gate and is reused as the recipient's inbound for the payer step.
         for cand in candidates:

@@ -45,7 +45,6 @@ class AnalysisManager:
     def start_expansion_task(self, anchor: str):
         if self.is_running():
             raise AnalysisAlreadyRunning()
-        import asyncio
         from .expansion import run_expansion
 
         async def _run():
