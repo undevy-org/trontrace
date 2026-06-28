@@ -53,5 +53,5 @@ First working release: trace TRC-20 token cash flows from a single anchor wallet
 - Heuristic thresholds are tuned defaults — recalibrate per scheme (all in `config.py` / `.env`).
 - Counterparty discovery is anchored on wallets that paid the anchor, so it is necessarily
   partial (see `ARCHITECTURE.md`).
-- `docker compose config` validates and the production frontend build succeeds, but a full
-  `docker compose up` end-to-end has not been exercised (the local-process path has).
+- Verified via both `docker compose up` (full stack, real analysis through the containers) and
+  the local-process path.
